@@ -107,12 +107,14 @@ jobs:
             echo "VPS secrets not configured — skipping deploy"
             exit 0
           fi
+          IS_MASTER="${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}"
+          [ "$IS_MASTER" = "true" ] && DEST="release" || DEST="test"
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             "$VPS_USER"@"$VPS_HOST" \
-            "mkdir -p /var/www/app-hub/downloads/test"
+            "mkdir -p /var/www/app-hub/downloads/${DEST}"
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             "${{ steps.apk.outputs.name }}" \
-            "$VPS_USER"@"$VPS_HOST":/var/www/app-hub/downloads/test/
+            "$VPS_USER"@"$VPS_HOST":/var/www/app-hub/downloads/${DEST}/
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -198,10 +200,11 @@ jobs:
           VERSION="${{ needs.build-and-deploy.outputs.version }}"
           IS_MASTER="${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}"
 
-          # Master push → link diretto download APK; PR → link al run CI
+          # Link diretto app-hub (stabile, non scade); fallback al run CI se build fallita
           APK_NAME="${{ needs.build-and-deploy.outputs.apk_name }}"
-          if [ "$IS_MASTER" = "true" ] && [ "$RAW_STATUS" = "success" ] && [ -n "$APK_NAME" ]; then
-            LINK="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/${APK_NAME}"
+          if [ "$RAW_STATUS" = "success" ] && [ -n "$APK_NAME" ]; then
+            [ "$IS_MASTER" = "true" ] && DEST="release" || DEST="test"
+            LINK="https://apps.8020solutions.org/downloads/${DEST}/${APK_NAME}"
           else
             LINK="$RUN_URL"
           fi
