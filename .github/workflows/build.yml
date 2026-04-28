@@ -65,12 +65,19 @@ jobs:
           echo "issue_num=$ISSUE_NUM"   >> $GITHUB_OUTPUT
 
       - name: Setup SSH
-        if: secrets.VPS_SSH_KEY != ''
         run: |
+          # Skip if secrets not configured
+          if [ -z "$VPS_SSH_KEY" ] || [ -z "$VPS_HOST" ]; then
+            echo "VPS secrets not configured — skipping SSH setup"
+            exit 0
+          fi
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "$VPS_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
 
       - name: Build APK (debug arm64)
         run: flutter build apk --debug --target-platform android-arm64
@@ -90,25 +97,36 @@ jobs:
           echo "name=$APK_NAME" >> $GITHUB_OUTPUT
 
       - name: Deploy APK to app-hub
-        if: secrets.VPS_SSH_KEY != ''
         run: |
+          if [ -z "$VPS_SSH_KEY" ] || [ -z "$VPS_HOST" ]; then
+            echo "VPS secrets not configured — skipping deploy"
+            exit 0
+          fi
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "$VPS_USER"@"$VPS_HOST" \
             "mkdir -p /var/www/app-hub/downloads/test"
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             "${{ steps.apk.outputs.name }}" \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/app-hub/downloads/test/
+            "$VPS_USER"@"$VPS_HOST":/var/www/app-hub/downloads/test/
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
 
       # ── Card board: label + move ─────────────────────────────
       - name: Mark deployed-test & move card to Test
-        if: success() && secrets.VPS_SSH_KEY != ''
+        if: success()
         run: |
+          if [ -z "$VPS_SSH_KEY" ] || [ -z "$VPS_HOST" ]; then
+            echo "VPS secrets not configured — skipping card move"
+            exit 0
+          fi
           ISSUE="${{ steps.info.outputs.issue_num }}"
           REPO="${{ github.repository }}"
           if [ -n "$ISSUE" ]; then
             ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
               -o ConnectTimeout=10 \
-              ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+              "$VPS_USER"@"$VPS_HOST" \
               "export PATH=\$PATH:/root/go/bin && \
                gh issue edit $ISSUE --repo $REPO \
                  --remove-label review-ready \
@@ -116,6 +134,10 @@ jobs:
                python3 /root/.openclaw/workspace-ciccio/scripts/project_board.py \
                  $REPO $ISSUE Test 2>/dev/null || true" || true
           fi
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
 
       - name: Comment PR with APK link
         if: github.event_name == 'pull_request'
@@ -139,12 +161,20 @@ jobs:
           files: ${{ steps.apk.outputs.name }}
 
       - name: Notify Ciccio
-        if: always() && secrets.VPS_SSH_KEY != ''
+        if: always()
         run: |
+          if [ -z "$VPS_SSH_KEY" ] || [ -z "$VPS_HOST" ]; then
+            echo "VPS secrets not configured — skipping notification"
+            exit 0
+          fi
           EMOJI=$([ "${{ job.status }}" = "success" ] && echo "OK" || echo "FAIL")
           APK="${{ steps.apk.outputs.name }}"
           URL="https://apps.8020solutions.org/downloads/test/${APK}"
           MSG="${EMOJI} ${{ github.event.repository.name }} build ${{ job.status }}\nBranch: ${{ steps.info.outputs.branch }}\n${URL}"
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "$VPS_USER"@"$VPS_HOST" \
             "ciccio-notify '${MSG}'" || true
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
