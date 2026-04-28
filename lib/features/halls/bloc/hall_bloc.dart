@@ -53,49 +53,87 @@ class HallBloc extends Bloc<HallEvent, HallState> {
     emit(const HallLoading());
 
     try {
-      final uri = eventId != null && eventId.isNotEmpty
-          ? Uri.parse('$serverUrl/events/$eventId/halls')
-          : Uri.parse('$serverUrl/channels');
+      List<EventHall> halls;
 
-      _logger.info('Fetching halls', {'uri': uri.toString()});
-
-      final response = await http
-          .get(uri, headers: {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 404) {
-        emit(const HallError('Evento non trovato', isNotFound: true));
-        return;
-      }
-      if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}');
-      }
-
-      final decoded = jsonDecode(response.body);
-
-      List<dynamic> rawList;
-      if (decoded is List) {
-        rawList = decoded;
-      } else if (decoded is Map && decoded.containsKey('halls')) {
-        rawList = decoded['halls'] as List<dynamic>;
-      } else if (decoded is Map && decoded.containsKey('channels')) {
-        rawList = decoded['channels'] as List<dynamic>;
-      } else if (decoded is Map && decoded.containsKey('data')) {
-        rawList = decoded['data'] as List<dynamic>;
+      if (eventId != null && eventId.isNotEmpty) {
+        // Fetch halls for a specific event
+        halls = await _fetchHallsForEvent(serverUrl, eventId);
       } else {
-        rawList = [];
+        // No eventId: fetch all events then collect halls from each.
+        // GET /events returns [{id, name, hallCount, createdAt}, ...]
+        halls = await _fetchAllHalls(serverUrl);
       }
-
-      final halls = rawList
-          .whereType<Map<String, dynamic>>()
-          .map(EventHall.fromJson)
-          .toList();
 
       _logger.info('Halls loaded', {'count': halls.length});
       emit(HallLoaded(halls: halls, serverUrl: serverUrl, eventId: eventId));
+    } on _NotFoundError catch (e) {
+      emit(HallError(e.message, isNotFound: true));
     } catch (e, stack) {
       _logger.error('Failed to fetch halls', e, stack);
       emit(HallError(e.toString()));
     }
   }
+
+  /// Fetch halls for a specific event from `GET /events/:eventId/halls`.
+  /// Returns 404 as [HallError] with isNotFound=true.
+  Future<List<EventHall>> _fetchHallsForEvent(
+    String serverUrl,
+    String eventId,
+  ) async {
+    final uri = Uri.parse('$serverUrl/events/$eventId/halls');
+    _logger.info('Fetching halls for event', {'uri': uri.toString()});
+
+    final response = await http
+        .get(uri, headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 404) {
+      throw _NotFoundError('Evento non trovato');
+    }
+    if (response.statusCode != 200) {
+      throw Exception('Server returned ${response.statusCode}');
+    }
+
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map((h) => EventHall.fromJson(h, contextEventId: eventId))
+        .toList();
+  }
+
+  /// Fetch all events then all their halls (browse mode — no eventId scanned).
+  Future<List<EventHall>> _fetchAllHalls(String serverUrl) async {
+    final eventsUri = Uri.parse('$serverUrl/events');
+    _logger.info('Fetching all events', {'uri': eventsUri.toString()});
+
+    final eventsResponse = await http
+        .get(eventsUri, headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 10));
+
+    if (eventsResponse.statusCode != 200) {
+      throw Exception('Server returned ${eventsResponse.statusCode}');
+    }
+
+    final eventList = jsonDecode(eventsResponse.body) as List<dynamic>;
+    final allHalls = <EventHall>[];
+
+    for (final ev in eventList.whereType<Map<String, dynamic>>()) {
+      final evId = ev['id'] as String?;
+      if (evId == null) continue;
+      try {
+        final halls = await _fetchHallsForEvent(serverUrl, evId);
+        allHalls.addAll(halls);
+      } catch (e) {
+        _logger.debug('Skipping event $evId — ${e.toString()}');
+      }
+    }
+
+    return allHalls;
+  }
+}
+
+/// Internal sentinel thrown when the server returns HTTP 404.
+class _NotFoundError implements Exception {
+  final String message;
+  const _NotFoundError(this.message);
 }

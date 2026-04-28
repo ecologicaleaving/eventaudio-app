@@ -13,6 +13,9 @@ class EventHall extends Equatable {
   final int listenerCount;
   final bool isLive;
 
+  /// Whether the hall requires a PIN to enter (optional, defaults to false).
+  final bool requiresPin;
+
   const EventHall({
     required this.hallId,
     required this.hallName,
@@ -20,17 +23,30 @@ class EventHall extends Equatable {
     this.languages = const [],
     this.listenerCount = 0,
     this.isLive = false,
+    this.requiresPin = false,
   });
 
-  factory EventHall.fromJson(Map<String, dynamic> json) {
+  /// Creates an [EventHall] from a JSON map.
+  ///
+  /// [contextEventId] — pass the eventId from the URL/context when the
+  /// server response (e.g. `GET /events/:eventId/halls`) omits the field.
+  factory EventHall.fromJson(
+    Map<String, dynamic> json, {
+    String? contextEventId,
+  }) {
     final rawLangs = json['languages'] as List<dynamic>? ?? [];
     return EventHall(
       hallId: json['hallId'] as String? ?? json['id'] as String,
       hallName: json['hallName'] as String? ?? json['name'] as String,
-      eventId: json['eventId'] as String? ?? '',
+      // Server hall list responses don't include eventId — fall back to context.
+      eventId: json['eventId'] as String? ?? contextEventId ?? '',
       languages: rawLangs.map((e) => e.toString()).toList(),
       listenerCount: (json['listenerCount'] as num?)?.toInt() ?? 0,
       isLive: json['isLive'] as bool? ?? json['isActive'] as bool? ?? false,
+      requiresPin: json['requiresPin'] as bool? ??
+          json['pinRequired'] as bool? ??
+          json['hasPin'] as bool? ??
+          false,
     );
   }
 
@@ -41,9 +57,10 @@ class EventHall extends Equatable {
         'languages': languages,
         'listenerCount': listenerCount,
         'isLive': isLive,
+        'requiresPin': requiresPin,
       };
 
   @override
   List<Object?> get props =>
-      [hallId, hallName, eventId, languages, listenerCount, isLive];
+      [hallId, hallName, eventId, languages, listenerCount, isLive, requiresPin];
 }
