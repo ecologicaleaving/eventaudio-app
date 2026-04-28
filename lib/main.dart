@@ -7,7 +7,8 @@ import 'core/theme/app_theme.dart';
 import 'core/utils/logger.dart';
 import 'core/utils/shared_prefs_helper.dart';
 import 'features/channels/bloc/channel_bloc.dart';
-import 'features/channels/screens/channel_list_screen.dart';
+import 'features/halls/bloc/hall_bloc.dart';
+import 'features/halls/screens/hall_list_screen.dart';
 import 'features/player/bloc/player_bloc.dart';
 import 'features/player/bloc/player_event.dart';
 
@@ -84,6 +85,11 @@ class _EventAudioAppState extends State<EventAudioApp>
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        // HallBloc drives the visitor's main home screen
+        BlocProvider<HallBloc>(
+          create: (_) => HallBloc(),
+        ),
+        // ChannelBloc kept for backward-compat / QR scan flow
         BlocProvider<ChannelBloc>(
           create: (_) => ChannelBloc(),
         ),
@@ -99,7 +105,8 @@ class _EventAudioAppState extends State<EventAudioApp>
         theme: AppTheme.darkTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.dark,
-        home: const ChannelListScreen(),
+        // HallListScreen is the visitor's entry point (MVP: no event ID needed)
+        home: const HallListScreen(),
       ),
     );
   }
