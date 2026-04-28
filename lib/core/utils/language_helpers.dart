@@ -12,6 +12,7 @@ String languageLabel(String langCode) {
 }
 
 const _flags = <String, String>{
+  'original': '\u{1F3A4}', // microphone — lingua originale
   'it': '\u{1F1EE}\u{1F1F9}', // IT
   'en': '\u{1F1EC}\u{1F1E7}', // GB
   'de': '\u{1F1E9}\u{1F1EA}', // DE
@@ -27,6 +28,7 @@ const _flags = <String, String>{
 };
 
 const _labels = <String, String>{
+  'original': 'Originale',
   'it': 'Italiano',
   'en': 'English',
   'de': 'Deutsch',
