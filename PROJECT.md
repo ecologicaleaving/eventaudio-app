@@ -36,15 +36,19 @@ lib/
     models/
       channel_model.dart       # Audio channel
       event_model.dart         # Event con channels
+    services/
+      webrtc_service.dart      # Consumer-only WebRTC/mediasoup (issue-2)
+      audio_service.dart       # Playback-only audio service (issue-2)
+      foreground_service_manager.dart  # Background audio Android/iOS (issue-2)
   features/
     channels/                  # Home screen — lista canali
       bloc/                    # ChannelBloc/Event/State
       screens/channel_list_screen.dart
     player/                    # Audio player (WebRTC)
-      bloc/                    # PlayerBloc/Event/State
+      bloc/                    # PlayerBloc/Event/State — wired to WebRtcService
       screens/player_screen.dart
     qr_scan/
-      screens/qr_scan_screen.dart  # Placeholder — scanner in issue-2
+      screens/qr_scan_screen.dart  # Placeholder — scanner in issue-4
 packages/
   mediasoup_client_flutter/    # Patch locale (null-safety fix)
 .github/workflows/build.yml    # CI APK debug
@@ -72,8 +76,8 @@ dependency_overrides:
 
 | Issue | Titolo | Stato |
 |---|---|---|
-| #1 | Bootstrap progetto Flutter + scaffold struttura | In Progress |
-| #2 | WebRTC connection + QR scanner + player screen | Todo |
+| #1 | Bootstrap progetto Flutter + scaffold struttura | Done |
+| #2 | Core audio engine — WebRtcService consumer-only + background audio | In Progress |
 | #3 | Background audio (flutter_foreground_task) | Todo |
 | #4 | Android permissions + deep link QR | Todo |
 
