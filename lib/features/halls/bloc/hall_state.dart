@@ -50,8 +50,11 @@ class HallLoaded extends HallState {
 class HallError extends HallState {
   final String message;
 
-  const HallError(this.message);
+  /// True when the server returned 404 — event ID was not found.
+  final bool isNotFound;
+
+  const HallError(this.message, {this.isNotFound = false});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, isNotFound];
 }

@@ -59,7 +59,8 @@ class _HallListScreenState extends State<HallListScreen> {
             HallLoading() => _buildLoadingSpinner(),
             HallLoaded(:final halls) when halls.isEmpty => _buildEmpty(context),
             HallLoaded(:final halls) => _buildList(context, halls, state),
-            HallError(:final message) => _buildError(context, message),
+            HallError(:final message, :final isNotFound) =>
+              _buildError(context, message, isNotFound: isNotFound),
             _ => _buildEmpty(context),
           };
         },
@@ -143,17 +144,21 @@ class _HallListScreenState extends State<HallListScreen> {
     );
   }
 
-  Widget _buildError(BuildContext context, String message) {
+  Widget _buildError(BuildContext context, String message, {bool isNotFound = false}) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 56, color: AppTheme.liveRed),
+            Icon(
+              isNotFound ? Icons.search_off_rounded : Icons.error_outline,
+              size: 56,
+              color: AppTheme.liveRed,
+            ),
             const SizedBox(height: 16),
             Text(
-              'Impossibile caricare le sale',
+              isNotFound ? 'Evento non trovato' : 'Impossibile caricare le sale',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -161,16 +166,25 @@ class _HallListScreenState extends State<HallListScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              message,
+              isNotFound
+                  ? 'Il codice evento non esiste o l\'evento non è più attivo.'
+                  : message,
               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Riprova'),
-            ),
+            if (!isNotFound)
+              FilledButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Riprova'),
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('Torna indietro'),
+              ),
           ],
         ),
       ),
