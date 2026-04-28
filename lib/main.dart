@@ -102,9 +102,9 @@ class _EventAudioAppState extends State<EventAudioApp>
         title: 'EventAudio',
         debugShowCheckedModeBanner: false,
         navigatorObservers: [routeObserver],
-        theme: AppTheme.darkTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.lightTheme,
+        themeMode: ThemeMode.light,
         // HomeScreen: QR scan + recent events entry point (issue-4)
         home: const HomeScreen(),
       ),

@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/models/event_hall.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/constants.dart';
-import '../../../core/utils/language_helpers.dart';
 import '../../player/screens/player_screen.dart';
 import '../bloc/hall_bloc.dart';
 import '../bloc/hall_event.dart';
 import '../bloc/hall_state.dart';
 
-/// Home screen — shows active halls (sale) the visitor can join.
+/// HallListScreen — replica grafica della webapp visitatore EventAudio.
 ///
-/// Navigation entry point: replaces the channel list placeholder.
-/// Visitor arrives here either from app start (MVP) or after a QR scan
-/// (future: receives [eventId] from the QR payload).
+/// Layout: eyebrow + titolo + meta, poi lista card sale (design EA).
 class HallListScreen extends StatefulWidget {
   /// Optional: event ID from QR scan. When null we fall back to GET /channels.
   final String? eventId;
@@ -44,21 +42,31 @@ class _HallListScreenState extends State<HallListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.bg,
       appBar: AppBar(
-        title: const Text('EventAudio'),
-        actions: [
-          // Network quality indicator
-          const _NetworkQualityDot(),
-          const SizedBox(width: 8),
+        backgroundColor: AppTheme.bg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: widget.eventId != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppTheme.ink, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
+        actions: const [
+          _NetworkQualityDot(),
+          SizedBox(width: 16),
         ],
       ),
       body: BlocBuilder<HallBloc, HallState>(
         builder: (context, state) {
           return switch (state) {
-            HallInitial() => _buildLoadingSpinner(),
-            HallLoading() => _buildLoadingSpinner(),
-            HallLoaded(:final halls) when halls.isEmpty => _buildEmpty(context),
-            HallLoaded(:final halls) => _buildList(context, halls, state),
+            HallInitial() => _buildLoading(),
+            HallLoading() => _buildLoading(),
+            HallLoaded(:final halls) when halls.isEmpty =>
+              _buildEmpty(context),
+            HallLoaded(:final halls) => _buildList(context, halls),
             HallError(:final message, :final isNotFound) =>
               _buildError(context, message, isNotFound: isNotFound),
             _ => _buildEmpty(context),
@@ -68,19 +76,20 @@ class _HallListScreenState extends State<HallListScreen> {
     );
   }
 
-  // ── Private builders ──────────────────────────────────────────────────────
+  // ── Builders ──────────────────────────────────────────────────────
 
-  Widget _buildLoadingSpinner() {
-    return const Center(child: CircularProgressIndicator());
+  Widget _buildLoading() {
+    return const Center(
+      child: CircularProgressIndicator(color: AppTheme.accent),
+    );
   }
 
   Widget _buildEmpty(BuildContext context) {
     return RefreshIndicator(
-      color: AppTheme.stageAmber,
-      backgroundColor: AppTheme.surfaceCard,
+      color: AppTheme.accent,
+      backgroundColor: AppTheme.surface,
       onRefresh: () async {
         context.read<HallBloc>().add(const RefreshHalls());
-        // Wait for the bloc to change state (max 5s)
         await _waitForNonLoading();
       },
       child: SingleChildScrollView(
@@ -93,23 +102,25 @@ class _HallListScreenState extends State<HallListScreen> {
               children: [
                 const Icon(
                   Icons.headphones_rounded,
-                  size: 72,
-                  color: AppTheme.stageAmber,
+                  size: 56,
+                  color: AppTheme.inkDim,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Text(
                   'Nessuna sala attiva',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: GoogleFonts.inter(
+                    color: AppTheme.ink,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
                   'Non ci sono sale audio attive in questo momento.\nTira su per aggiornare.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
+                  style: GoogleFonts.inter(
+                    color: AppTheme.inkMuted,
+                    fontSize: 14,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -120,59 +131,102 @@ class _HallListScreenState extends State<HallListScreen> {
     );
   }
 
-  Widget _buildList(
-    BuildContext context,
-    List<EventHall> halls,
-    HallLoaded state,
-  ) {
+  Widget _buildList(BuildContext context, List<EventHall> halls) {
+    // eventName: use eventId if available, fallback to "EventAudio"
+    final eventName = (widget.eventId?.isNotEmpty == true)
+        ? widget.eventId!
+        : 'EventAudio';
+
     return RefreshIndicator(
-      color: AppTheme.stageAmber,
-      backgroundColor: AppTheme.surfaceCard,
+      color: AppTheme.accent,
+      backgroundColor: AppTheme.surface,
       onRefresh: () async {
         context.read<HallBloc>().add(const RefreshHalls());
         await _waitForNonLoading();
       },
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        itemCount: halls.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _HallCard(
-          hall: halls[index],
-          onTap: () => _openPlayer(context, halls[index]),
-        ),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        children: [
+          // ── Eyebrow ──────────────────────────────────────────────
+          Text(
+            eventName.toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: AppTheme.inkDim,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // ── Title ────────────────────────────────────────────────
+          Text(
+            'Scegli la sala',
+            style: GoogleFonts.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.ink,
+              letterSpacing: -0.5,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          // ── Meta ─────────────────────────────────────────────────
+          Text(
+            '${halls.length} ${halls.length == 1 ? 'sala disponibile' : 'sale disponibili'}',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: AppTheme.inkMuted,
+            ),
+          ),
+          const SizedBox(height: 18),
+          // ── Hall cards ───────────────────────────────────────────
+          ...halls.map(
+            (hall) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _HallCard(
+                hall: hall,
+                onTap: () => _openPlayer(context, hall),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildError(BuildContext context, String message, {bool isNotFound = false}) {
+  Widget _buildError(
+    BuildContext context,
+    String message, {
+    bool isNotFound = false,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isNotFound ? Icons.search_off_rounded : Icons.error_outline,
-              size: 56,
-              color: AppTheme.liveRed,
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.err.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                border: Border.all(
+                  color: AppTheme.err.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Text(
+                isNotFound
+                    ? 'Evento non trovato'
+                    : 'Impossibile caricare le sale: $message',
+                style: GoogleFonts.inter(
+                  color: AppTheme.err,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              isNotFound ? 'Evento non trovato' : 'Impossibile caricare le sale',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isNotFound
-                  ? 'Il codice evento non esiste o l\'evento non è più attivo.'
-                  : message,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             if (!isNotFound)
               FilledButton.icon(
                 onPressed: _load,
@@ -202,10 +256,7 @@ class _HallListScreenState extends State<HallListScreen> {
     );
   }
 
-  /// Waits until the HallBloc state is no longer Loading (or timeout).
   Future<void> _waitForNonLoading() async {
-    // Capture the bloc reference before any async gap to avoid
-    // BuildContext access across async boundaries.
     final bloc = context.read<HallBloc>();
     const maxWait = Duration(seconds: 5);
     final deadline = DateTime.now().add(maxWait);
@@ -218,104 +269,100 @@ class _HallListScreenState extends State<HallListScreen> {
 
 // ── Hall Card ────────────────────────────────────────────────────────────────
 
-class _HallCard extends StatelessWidget {
+class _HallCard extends StatefulWidget {
   final EventHall hall;
   final VoidCallback onTap;
 
   const _HallCard({required this.hall, required this.onTap});
 
   @override
+  State<_HallCard> createState() => _HallCardState();
+}
+
+class _HallCardState extends State<_HallCard> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.99 : 1.0,
+        duration: const Duration(milliseconds: 80),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceCard,
-            borderRadius: BorderRadius.circular(16),
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             border: Border.all(
-              color: hall.isLive
-                  ? AppTheme.liveRed.withValues(alpha: 0.4)
-                  : AppTheme.surfaceBorder,
+              color: _pressed ? AppTheme.lineStrong : AppTheme.line,
+              width: 1,
             ),
           ),
-          padding: const EdgeInsets.all(16),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left: icon
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: (hall.isLive ? AppTheme.liveRed : AppTheme.stageAmber)
-                      .withValues(alpha: 0.15),
-                ),
-                child: Icon(
-                  hall.isLive ? Icons.cell_tower : Icons.headphones_rounded,
-                  color: hall.isLive ? AppTheme.liveRed : AppTheme.stageAmber,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-              // Center: name + languages + listener count
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            hall.hallName,
-                            style: const TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (hall.isLive)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: AppTheme.liveGradient,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'LIVE',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ),
-                      ],
+              // ── Card header: title + LIVE badge ──────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.hall.hallName,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.ink,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (hall.languages.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      _LanguageRow(languages: hall.languages),
-                    ],
-                    const SizedBox(height: 4),
-                    _ListenerCount(count: hall.listenerCount),
+                  ),
+                  if (widget.hall.isLive) ...[
+                    const SizedBox(width: 8),
+                    const _LiveBadge(),
                   ],
-                ),
+                ],
               ),
-              // Right: chevron
-              const Icon(
-                Icons.chevron_right,
-                color: AppTheme.textMuted,
-                size: 22,
+              const SizedBox(height: 8),
+              // ── Meta: channel count + PIN ─────────────────────────
+              Row(
+                children: [
+                  Text(
+                    // +1 for the 'original' channel always present
+                    '${1 + widget.hall.languages.length} ${(1 + widget.hall.languages.length) == 1 ? 'canale' : 'canali'}',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppTheme.inkMuted,
+                    ),
+                  ),
+                  if (widget.hall.requiresPin) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '+ PIN richiesto',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppTheme.warn,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              // ── Footer mono: language codes (always includes OG for original) ─
+              const SizedBox(height: 6),
+              Text(
+                ['OG', ...widget.hall.languages.map((l) => l.toUpperCase())]
+                    .join(' · '),
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 10,
+                  color: AppTheme.inkDim,
+                  letterSpacing: 0.4,
+                ),
               ),
             ],
           ),
@@ -325,55 +372,74 @@ class _HallCard extends StatelessWidget {
   }
 }
 
-// ── Language chips row ───────────────────────────────────────────────────────
+// ── Live badge with pulsing dot ──────────────────────────────────────────────
 
-class _LanguageRow extends StatelessWidget {
-  final List<String> languages;
-
-  const _LanguageRow({required this.languages});
+class _LiveBadge extends StatefulWidget {
+  const _LiveBadge();
 
   @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      children: languages.map((lang) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceElevated,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.surfaceBorder),
-          ),
-          child: Text(
-            '${languageFlag(lang)} ${languageLabel(lang)}',
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
+  State<_LiveBadge> createState() => _LiveBadgeState();
 }
 
-// ── Listener count ───────────────────────────────────────────────────────────
+class _LiveBadgeState extends State<_LiveBadge>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
 
-class _ListenerCount extends StatelessWidget {
-  final int count;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
 
-  const _ListenerCount({required this.count});
+    _opacity = Tween<double>(begin: 1.0, end: 0.55).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.headset, size: 13, color: AppTheme.textMuted),
-        const SizedBox(width: 4),
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) => Opacity(
+            opacity: _opacity.value,
+            child: Transform.scale(
+              scale: _scale.value,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppTheme.accent,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 5),
         Text(
-          '$count in ascolto',
-          style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+          'LIVE',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.accent,
+            letterSpacing: 0.6,
+          ),
         ),
       ],
     );
@@ -387,16 +453,14 @@ class _NetworkQualityDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Static green — real-time metrics not yet exposed (same as StageConnect)
     return Tooltip(
       message: 'Rete: buona',
       child: Container(
-        width: 10,
-        height: 10,
-        margin: const EdgeInsets.only(right: 4),
+        width: 8,
+        height: 8,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: AppTheme.connectedGreen,
+          color: AppTheme.ok,
         ),
       ),
     );

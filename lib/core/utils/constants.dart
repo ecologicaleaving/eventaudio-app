@@ -18,11 +18,11 @@ class AudioConstants {
 
 /// Network constants
 class NetworkConstants {
-  /// Default EventAudio server URL
-  static const String defaultServerUrl = 'https://eventaudio.8020solutions.org';
+  /// Default EventAudio server URL (mirrors AppConstants.serverUrl)
+  static const String defaultServerUrl = AppConstants.serverUrl;
 
   /// Default WebSocket port
-  static const int defaultPort = 3000;
+  static const int defaultPort = 3005;
 
   /// Maximum saved servers in history
   static const int maxSavedServers = 10;
@@ -54,11 +54,17 @@ class AppConstants {
   /// App version
   static const String appVersion = '0.1.0';
 
-  /// EventAudio server base URL
-  static const String serverUrl = 'https://eventaudio.8020solutions.org';
+  /// EventAudio server base URL — VPS production (nginx TLS).
+  static const String serverUrl = String.fromEnvironment(
+    'SERVER_URL',
+    defaultValue: 'https://eventaudio.8020solutions.org',
+  );
 
-  /// WebSocket signaling URL
-  static const String wsUrl = 'https://eventaudio.8020solutions.org';
+  /// WebSocket / Socket.IO signaling URL — same host as [serverUrl].
+  static const String wsUrl = String.fromEnvironment(
+    'SERVER_URL',
+    defaultValue: 'https://eventaudio.8020solutions.org',
+  );
 
   /// Package name
   static const String packageName = 'it.eventaudio.app';
