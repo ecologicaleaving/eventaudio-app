@@ -1,210 +1,242 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// StageConnect Design System
-/// Professional dark theme inspired by stage lighting and audio consoles
+/// EventAudio Design System — light theme aligned to the visitor PWA.
+/// All tokens mirror the CSS variables in visitor-pwa/src/styles.css.
 class AppTheme {
   AppTheme._();
 
-  // ── Brand Colors ──────────────────────────────────────────
-  static const Color stageGold = Color(0xFFFFAB00);
-  static const Color stageAmber = Color(0xFFFF8F00);
-  static const Color liveRed = Color(0xFFFF1744);
-  static const Color connectedGreen = Color(0xFF00E676);
-  static const Color techCyan = Color(0xFF00BCD4);
-  static const Color stagePurple = Color(0xFF9C27B0);
+  // ── Background / Surface ──────────────────────────────────────────
+  static const Color bg = Color(0xFFFAFAF7);
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceAlt = Color(0xFFF4F3EF);
 
-  // ── Surface Palette ───────────────────────────────────────
-  static const Color surfaceBlack = Color(0xFF0A0A0F);
-  static const Color surfaceDark = Color(0xFF121218);
-  static const Color surfaceCard = Color(0xFF1A1A22);
-  static const Color surfaceElevated = Color(0xFF24242E);
-  static const Color surfaceBorder = Color(0xFF2E2E3A);
+  // ── Lines / borders ───────────────────────────────────────────────
+  static const Color line = Color(0xFFE7E5DF);
+  static const Color lineStrong = Color(0xFFD5D2CA);
 
-  // ── Text Colors ───────────────────────────────────────────
-  static const Color textPrimary = Color(0xFFF0F0F5);
-  static const Color textSecondary = Color(0xFF9E9EAE);
-  static const Color textMuted = Color(0xFF6E6E7E);
+  // ── Text / ink ────────────────────────────────────────────────────
+  static const Color ink = Color(0xFF15130F);
+  static const Color inkMuted = Color(0xFF5A574E);
+  static const Color inkDim = Color(0xFF8A877D);
 
-  // ── Gradients ─────────────────────────────────────────────
-  static const LinearGradient goldGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [stageGold, stageAmber],
-  );
+  // ── Accent (EventAudio teal) ──────────────────────────────────────
+  static const Color accent = Color(0xFF0EA5A3);
+  static const Color accentSoft = Color(0x1A0EA5A3); // rgba(14,165,163,0.10)
+  static const Color accentInk = Color(0xFF0F766E);
 
-  static const LinearGradient liveGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFFFF1744), Color(0xFFD50000)],
-  );
+  // ── Semantic ──────────────────────────────────────────────────────
+  static const Color ok = Color(0xFF2E7D4F);
+  static const Color warn = Color(0xFFC88A1A);
+  static const Color err = Color(0xFFB3261E);
 
-  static const LinearGradient surfaceGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [surfaceBlack, Color(0xFF0F0F18)],
-  );
+  // ── Border radius ─────────────────────────────────────────────────
+  static const double radiusSm = 6;
+  static const double radiusMd = 10;
+  static const double radiusLg = 14;
+  static const double radiusXl = 20;
 
-  // ── Theme Data ────────────────────────────────────────────
-  static ThemeData get darkTheme {
-    return ThemeData(
+  // ── Legacy aliases kept for references in old code ────────────────
+  /// @deprecated use [accent]
+  static const Color stageAmber = accent;
+  /// @deprecated use [err]
+  static const Color liveRed = err;
+  /// @deprecated use [ok]
+  static const Color connectedGreen = ok;
+  /// @deprecated use [surface]
+  static const Color surfaceCard = surface;
+  /// @deprecated use [bg]
+  static const Color surfaceBlack = bg;
+  /// @deprecated use [surfaceAlt]
+  static const Color surfaceElevated = surfaceAlt;
+  /// @deprecated use [line]
+  static const Color surfaceBorder = line;
+  /// @deprecated use [ink]
+  static const Color textPrimary = ink;
+  /// @deprecated use [inkMuted]
+  static const Color textSecondary = inkMuted;
+  /// @deprecated use [inkDim]
+  static const Color textMuted = inkDim;
+
+  // ── Typography helpers ────────────────────────────────────────────
+  static TextStyle get sans => GoogleFonts.inter();
+  static TextStyle get mono => GoogleFonts.jetBrainsMono();
+
+  // ── Theme Data ────────────────────────────────────────────────────
+  static ThemeData get lightTheme {
+    final base = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: stageAmber,
-        onPrimary: Colors.black,
-        primaryContainer: Color(0xFF3D2E00),
-        onPrimaryContainer: stageGold,
-        secondary: techCyan,
-        onSecondary: Colors.black,
-        secondaryContainer: Color(0xFF003D47),
-        onSecondaryContainer: techCyan,
-        tertiary: stagePurple,
+      brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
+        primary: accent,
+        onPrimary: Colors.white,
+        primaryContainer: accentSoft,
+        onPrimaryContainer: accentInk,
+        secondary: accentInk,
+        onSecondary: Colors.white,
+        tertiary: ok,
         onTertiary: Colors.white,
-        error: liveRed,
+        error: err,
         onError: Colors.white,
-        surface: surfaceDark,
-        onSurface: textPrimary,
-        onSurfaceVariant: textSecondary,
-        outline: surfaceBorder,
-        outlineVariant: Color(0xFF1E1E28),
+        surface: surface,
+        onSurface: ink,
+        onSurfaceVariant: inkMuted,
+        outline: line,
+        outlineVariant: lineStrong,
       ),
-      scaffoldBackgroundColor: surfaceBlack,
+      scaffoldBackgroundColor: bg,
+    );
+
+    return base.copyWith(
+      textTheme: GoogleFonts.interTextTheme(base.textTheme).apply(
+        bodyColor: ink,
+        displayColor: ink,
+      ),
       cardTheme: CardThemeData(
-        color: surfaceCard,
+        color: surface,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: surfaceBorder, width: 1),
+          borderRadius: BorderRadius.circular(radiusLg),
+          side: const BorderSide(color: line, width: 1),
         ),
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
+      appBarTheme: AppBarTheme(
+        backgroundColor: bg,
         surfaceTintColor: Colors.transparent,
-        centerTitle: true,
         elevation: 0,
-        titleTextStyle: TextStyle(
-          color: textPrimary,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.inter(
+          color: ink,
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
         ),
-        iconTheme: IconThemeData(color: textPrimary),
+        iconTheme: const IconThemeData(color: ink),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: stageAmber,
-        foregroundColor: Colors.black,
+        backgroundColor: accent,
+        foregroundColor: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radiusMd),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: stageAmber,
-          foregroundColor: Colors.black,
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
-          textStyle: const TextStyle(
+          textStyle: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
+            letterSpacing: 0.2,
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: stageAmber,
-          side: const BorderSide(color: stageAmber, width: 1.5),
+          foregroundColor: inkMuted,
+          side: const BorderSide(color: line, width: 1),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
-          textStyle: const TextStyle(
+          textStyle: GoogleFonts.inter(
             fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: stageAmber,
-          textStyle: const TextStyle(
+          foregroundColor: accent,
+          textStyle: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
           ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceCard,
+        fillColor: surface,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: surfaceBorder),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: line),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: surfaceBorder),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: line),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: stageAmber, width: 2),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: accent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: liveRed),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: err),
         ),
-        labelStyle: const TextStyle(color: textSecondary),
-        hintStyle: const TextStyle(color: textMuted),
-        prefixIconColor: textMuted,
+        labelStyle: GoogleFonts.inter(color: inkMuted),
+        hintStyle: GoogleFonts.inter(color: inkDim),
       ),
       dividerTheme: const DividerThemeData(
-        color: surfaceBorder,
+        color: line,
         thickness: 1,
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return stageAmber;
-          return textMuted;
+          if (states.contains(WidgetState.selected)) return accent;
+          return inkDim;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return stageAmber.withValues(alpha: 0.3);
-          }
-          return surfaceBorder;
+          if (states.contains(WidgetState.selected)) return accentSoft;
+          return line;
         }),
       ),
+      sliderTheme: SliderThemeData(
+        trackHeight: 4,
+        activeTrackColor: accent,
+        inactiveTrackColor: line,
+        thumbColor: accent,
+        overlayColor: accentSoft,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+      ),
       dialogTheme: DialogThemeData(
-        backgroundColor: surfaceCard,
+        backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: surfaceBorder),
+          borderRadius: BorderRadius.circular(radiusXl),
+          side: const BorderSide(color: line),
         ),
-        titleTextStyle: const TextStyle(
-          color: textPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+        titleTextStyle: GoogleFonts.inter(
+          color: ink,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: surfaceElevated,
-        contentTextStyle: const TextStyle(color: textPrimary),
+        backgroundColor: ink,
+        contentTextStyle: GoogleFonts.inter(color: surface),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(radiusMd),
         ),
         behavior: SnackBarBehavior.floating,
       ),
       listTileTheme: const ListTileThemeData(
-        iconColor: textSecondary,
-        textColor: textPrimary,
+        iconColor: inkMuted,
+        textColor: ink,
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: stageAmber,
+        color: accent,
       ),
     );
   }
+
+  /// Keep darkTheme as alias to lightTheme so any ThemeMode.dark reference
+  /// still renders correctly with the EventAudio palette.
+  static ThemeData get darkTheme => lightTheme;
 }

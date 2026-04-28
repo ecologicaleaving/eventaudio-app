@@ -40,6 +40,9 @@ dependencies:
   # QR code scanner
   mobile_scanner: ^5.0.0
 
+  # Fonts
+  google_fonts: ^6.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
