@@ -47,3 +47,19 @@ class PlayerBackgroundEntered extends PlayerEvent {
 class PlayerForegroundEntered extends PlayerEvent {
   const PlayerForegroundEntered();
 }
+
+/// Visitor selected a language chip → connect to that language's channel
+class SelectLanguage extends PlayerEvent {
+  final String language;
+  final String channelId;
+  final String serverUrl;
+
+  const SelectLanguage({
+    required this.language,
+    required this.channelId,
+    required this.serverUrl,
+  });
+
+  @override
+  List<Object?> get props => [language, channelId, serverUrl];
+}
