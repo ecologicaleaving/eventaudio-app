@@ -54,16 +54,16 @@ class AppConstants {
   /// App version
   static const String appVersion = '0.1.0';
 
-  /// EventAudio server base URL — VPS direct (issue-12).
+  /// EventAudio server base URL — VPS production (nginx TLS).
   static const String serverUrl = String.fromEnvironment(
     'SERVER_URL',
-    defaultValue: 'http://46.225.60.101:3005',
+    defaultValue: 'https://eventaudio.8020solutions.org',
   );
 
-  /// WebSocket signaling URL — VPS direct (issue-12).
+  /// WebSocket / Socket.IO signaling URL — same host as [serverUrl].
   static const String wsUrl = String.fromEnvironment(
-    'WS_URL',
-    defaultValue: 'ws://46.225.60.101:3005',
+    'SERVER_URL',
+    defaultValue: 'https://eventaudio.8020solutions.org',
   );
 
   /// Package name

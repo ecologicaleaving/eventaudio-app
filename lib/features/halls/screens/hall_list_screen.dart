@@ -333,7 +333,8 @@ class _HallCardState extends State<_HallCard> {
               Row(
                 children: [
                   Text(
-                    '${widget.hall.languages.length} ${widget.hall.languages.length == 1 ? 'canale' : 'canali'}',
+                    // +1 for the 'original' channel always present
+                    '${1 + widget.hall.languages.length} ${(1 + widget.hall.languages.length) == 1 ? 'canale' : 'canali'}',
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: AppTheme.inkMuted,
@@ -352,20 +353,17 @@ class _HallCardState extends State<_HallCard> {
                   ],
                 ],
               ),
-              // ── Footer mono: language codes ───────────────────────
-              if (widget.hall.languages.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  widget.hall.languages
-                      .map((l) => l.toUpperCase())
-                      .join(' · '),
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10,
-                    color: AppTheme.inkDim,
-                    letterSpacing: 0.4,
-                  ),
+              // ── Footer mono: language codes (always includes OG for original) ─
+              const SizedBox(height: 6),
+              Text(
+                ['OG', ...widget.hall.languages.map((l) => l.toUpperCase())]
+                    .join(' · '),
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 10,
+                  color: AppTheme.inkDim,
+                  letterSpacing: 0.4,
                 ),
-              ],
+              ),
             ],
           ),
         ),
