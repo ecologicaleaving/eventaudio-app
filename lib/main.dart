@@ -8,7 +8,7 @@ import 'core/utils/logger.dart';
 import 'core/utils/shared_prefs_helper.dart';
 import 'features/channels/bloc/channel_bloc.dart';
 import 'features/halls/bloc/hall_bloc.dart';
-import 'features/halls/screens/hall_list_screen.dart';
+import 'features/home/screens/home_screen.dart';
 import 'features/player/bloc/player_bloc.dart';
 import 'features/player/bloc/player_event.dart';
 
@@ -105,8 +105,8 @@ class _EventAudioAppState extends State<EventAudioApp>
         theme: AppTheme.darkTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.dark,
-        // HallListScreen is the visitor's entry point (MVP: no event ID needed)
-        home: const HallListScreen(),
+        // HomeScreen: QR scan + recent events entry point (issue-4)
+        home: const HomeScreen(),
       ),
     );
   }
