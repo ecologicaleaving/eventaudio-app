@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/services/webrtc_service.dart';
+import '../../../core/utils/constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/shared_prefs_helper.dart';
 import 'player_event.dart';
@@ -6,6 +8,7 @@ import 'player_state.dart';
 
 class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   final _logger = Logger('PlayerBloc');
+  final _webRtc = WebRtcService.instance;
 
   PlayerBloc() : super(const PlayerState()) {
     on<ConnectToChannel>(_onConnect);
@@ -59,7 +62,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     Emitter<PlayerState> emit,
   ) async {
     _logger.info('Disconnecting from channel');
-    // TODO(issue-2): close WebRTC transport
+    try {
+      await _webRtc.leaveChannel();
+    } catch (e, stack) {
+      _logger.error('Error during disconnect', e, stack);
+    }
     emit(const PlayerState(status: PlayerStatus.disconnected));
   }
 
@@ -114,17 +121,24 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     ));
 
     try {
-      // TODO(issue-4): WebRTC join via WebRtcService.joinChannel(event.channelId)
+      // channelId format: `${hallId}_${lang}` — aligns with server convention
+      await _webRtc.joinChannel(
+        serverUrl: event.serverUrl.isNotEmpty
+            ? event.serverUrl
+            : AppConstants.serverUrl,
+        channelId: event.channelId,
+      );
+
       await SharedPrefsHelper.addRecentChannel(
         channelId: event.channelId,
         channelName: event.channelId,
       );
 
-      // Simulate connected state until real WebRTC is wired in issue-4
       emit(state.copyWith(
         status: PlayerStatus.connected,
         channelId: event.channelId,
         selectedLanguage: event.language,
+        errorMessage: null,
       ));
     } catch (e, stack) {
       _logger.error('Language selection / join failed', e, stack);
