@@ -30,6 +30,10 @@ class SharedPrefsHelper {
   static const String _keyRecentChannels = 'recent_channels';
   static const String _keyFirstLaunchCompleted = 'first_launch_completed';
   static const String _keySavedServer = 'saved_server';
+  static const String _keyRecentEvents = 'recent_events';
+
+  /// Maximum number of recent events to store (FIFO)
+  static const int _maxRecentEvents = 3;
 
   /// Get or generate device ID (persistent UUID — identifies anonymous visitor)
   static Future<String> getDeviceId() async {
@@ -125,6 +129,30 @@ class SharedPrefsHelper {
   /// Save server URL
   static Future<bool> setSavedServer(String url) {
     return _instance.setString(_keySavedServer, url);
+  }
+
+  // ── Recent Events ──────────────────────────────────────────────────────────
+
+  /// Returns the list of recently accessed event IDs (most recent first, max 3).
+  static List<String> getRecentEvents() {
+    return _instance.getStringList(_keyRecentEvents) ?? [];
+  }
+
+  /// Adds [eventId] to the recent events list (max [_maxRecentEvents], FIFO).
+  /// If [eventId] already exists it is moved to the front.
+  static Future<void> addRecentEvent(String eventId) async {
+    final events = getRecentEvents();
+    events.remove(eventId);
+    events.insert(0, eventId);
+    if (events.length > _maxRecentEvents) {
+      events.removeRange(_maxRecentEvents, events.length);
+    }
+    await _instance.setStringList(_keyRecentEvents, events);
+  }
+
+  /// Clears the recent events list.
+  static Future<void> clearRecentEvents() async {
+    await _instance.remove(_keyRecentEvents);
   }
 
   /// Clear all preferences

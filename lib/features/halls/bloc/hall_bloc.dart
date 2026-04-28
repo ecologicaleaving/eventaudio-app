@@ -63,6 +63,10 @@ class HallBloc extends Bloc<HallEvent, HallState> {
           .get(uri, headers: {'Accept': 'application/json'})
           .timeout(const Duration(seconds: 10));
 
+      if (response.statusCode == 404) {
+        emit(const HallError('Evento non trovato', isNotFound: true));
+        return;
+      }
       if (response.statusCode != 200) {
         throw Exception('Server returned ${response.statusCode}');
       }
