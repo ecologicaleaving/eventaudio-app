@@ -198,9 +198,10 @@ jobs:
           VERSION="${{ needs.build-and-deploy.outputs.version }}"
           IS_MASTER="${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}"
 
-          # Master push → link al GitHub Release; PR → link al run CI
-          if [ "$IS_MASTER" = "true" ] && [ "$RAW_STATUS" = "success" ]; then
-            LINK="${{ github.server_url }}/${{ github.repository }}/releases/tag/v${VERSION}"
+          # Master push → link diretto download APK; PR → link al run CI
+          APK_NAME="${{ needs.build-and-deploy.outputs.apk_name }}"
+          if [ "$IS_MASTER" = "true" ] && [ "$RAW_STATUS" = "success" ] && [ -n "$APK_NAME" ]; then
+            LINK="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/${APK_NAME}"
           else
             LINK="$RUN_URL"
           fi
