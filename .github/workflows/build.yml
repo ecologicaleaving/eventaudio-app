@@ -32,6 +32,7 @@ jobs:
     outputs:
       apk_name: ${{ steps.apk.outputs.name }}
       branch: ${{ steps.info.outputs.branch }}
+      version: ${{ steps.info.outputs.version }}
 
     steps:
       - uses: actions/checkout@v4
@@ -193,13 +194,15 @@ jobs:
           RAW_STATUS="${{ needs.build-and-deploy.result }}"
           [ "$RAW_STATUS" = "success" ] && STATUS="success" || STATUS="failed"
 
-          APK_NAME="${{ needs.build-and-deploy.outputs.apk_name }}"
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          VERSION="${{ needs.build-and-deploy.outputs.version }}"
+          IS_MASTER="${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}"
 
-          if [ -n "$APK_NAME" ]; then
-            APK_URL="https://apps.8020solutions.org/downloads/test/${APK_NAME}"
+          # Master push → link al GitHub Release; PR → link al run CI
+          if [ "$IS_MASTER" = "true" ] && [ "$RAW_STATUS" = "success" ]; then
+            LINK="${{ github.server_url }}/${{ github.repository }}/releases/tag/v${VERSION}"
           else
-            APK_URL="$RUN_URL"
+            LINK="$RUN_URL"
           fi
 
           python workflow/scripts/deploy-notify.py \
@@ -208,4 +211,4 @@ jobs:
             "$STATUS" \
             "${{ needs.build-and-deploy.outputs.branch }}" \
             "$RUN_URL" \
-            "$APK_URL"
+            "$LINK"
