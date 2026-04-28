@@ -65,6 +65,7 @@ jobs:
           echo "issue_num=$ISSUE_NUM"   >> $GITHUB_OUTPUT
 
       - name: Setup SSH
+        if: secrets.VPS_SSH_KEY != ''
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
@@ -89,6 +90,7 @@ jobs:
           echo "name=$APK_NAME" >> $GITHUB_OUTPUT
 
       - name: Deploy APK to app-hub
+        if: secrets.VPS_SSH_KEY != ''
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
@@ -99,7 +101,7 @@ jobs:
 
       # ── Card board: label + move ─────────────────────────────
       - name: Mark deployed-test & move card to Test
-        if: success()
+        if: success() && secrets.VPS_SSH_KEY != ''
         run: |
           ISSUE="${{ steps.info.outputs.issue_num }}"
           REPO="${{ github.repository }}"
@@ -137,7 +139,7 @@ jobs:
           files: ${{ steps.apk.outputs.name }}
 
       - name: Notify Ciccio
-        if: always()
+        if: always() && secrets.VPS_SSH_KEY != ''
         run: |
           EMOJI=$([ "${{ job.status }}" = "success" ] && echo "OK" || echo "FAIL")
           APK="${{ steps.apk.outputs.name }}"
