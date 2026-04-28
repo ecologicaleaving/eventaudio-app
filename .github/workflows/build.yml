@@ -3,13 +3,15 @@ name: Build & Deploy APK
 # EventAudio App — Flutter CI/CD
 #
 # Secrets richiesti:
-#   VPS_SSH_KEY   — chiave privata SSH (github-actions-deploy)
-#   VPS_HOST      — IP VPS (46.225.60.101)
-#   VPS_USER      — utente SSH (root)
+#   VPS_SSH_KEY          — chiave privata SSH (github-actions-deploy)
+#   VPS_HOST             — IP VPS (46.225.60.101)
+#   VPS_USER             — utente SSH (root)
+#   TELEGRAM_BOT_TOKEN   — token bot deploy monitor
+#   TELEGRAM_CHAT_ID     — chat ID canale notifiche
 #
 # Flusso:
-#   push feature branch / PR → build APK debug → deploy test
-#   push master → build APK debug → GitHub Release
+#   push feature branch / PR → build APK debug → deploy test → notifica Telegram
+#   push master → build APK debug → GitHub Release → notifica Telegram
 # ============================================================
 
 on:
@@ -27,6 +29,9 @@ jobs:
   build-and-deploy:
     name: Build APK & Deploy
     runs-on: ubuntu-latest
+    outputs:
+      apk_name: ${{ steps.apk.outputs.name }}
+      branch: ${{ steps.info.outputs.branch }}
 
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +71,6 @@ jobs:
 
       - name: Setup SSH
         run: |
-          # Skip if secrets not configured
           if [ -z "$VPS_SSH_KEY" ] || [ -z "$VPS_HOST" ]; then
             echo "VPS secrets not configured — skipping SSH setup"
             exit 0
@@ -113,7 +117,6 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
 
-      # ── Card board: label + move ─────────────────────────────
       - name: Mark deployed-test & move card to Test
         if: success()
         run: |
@@ -160,21 +163,49 @@ jobs:
           name: v${{ steps.info.outputs.version }}
           files: ${{ steps.apk.outputs.name }}
 
-      - name: Notify Ciccio
-        if: always()
-        run: |
-          if [ -z "$VPS_SSH_KEY" ] || [ -z "$VPS_HOST" ]; then
-            echo "VPS secrets not configured — skipping notification"
-            exit 0
-          fi
-          EMOJI=$([ "${{ job.status }}" = "success" ] && echo "OK" || echo "FAIL")
-          APK="${{ steps.apk.outputs.name }}"
-          URL="https://apps.8020solutions.org/downloads/test/${APK}"
-          MSG="${EMOJI} ${{ github.event.repository.name }} build ${{ job.status }}\nBranch: ${{ steps.info.outputs.branch }}\n${URL}"
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-            "$VPS_USER"@"$VPS_HOST" \
-            "ciccio-notify '${MSG}'" || true
+  notify:
+    name: Notify Deploy (Telegram)
+    needs: build-and-deploy
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout workflow repo
+        uses: actions/checkout@v4
+        with:
+          repository: ecologicaleaving/workflow
+          path: workflow
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Send Telegram notification
+        if: env.TELEGRAM_BOT_TOKEN != ''
         env:
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          RAW_STATUS="${{ needs.build-and-deploy.result }}"
+          [ "$RAW_STATUS" = "success" ] && STATUS="success" || STATUS="failed"
+
+          APK_NAME="${{ needs.build-and-deploy.outputs.apk_name }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ -n "$APK_NAME" ]; then
+            APK_URL="https://apps.8020solutions.org/downloads/test/${APK_NAME}"
+          else
+            APK_URL="$RUN_URL"
+          fi
+
+          python workflow/scripts/deploy-notify.py \
+            "${{ github.repository }}" \
+            "build" \
+            "$STATUS" \
+            "${{ needs.build-and-deploy.outputs.branch }}" \
+            "$RUN_URL" \
+            "$APK_URL"
