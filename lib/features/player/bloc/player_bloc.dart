@@ -14,6 +14,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<SetVolume>(_onSetVolume);
     on<PlayerBackgroundEntered>(_onBackground);
     on<PlayerForegroundEntered>(_onForeground);
+    on<SelectLanguage>(_onSelectLanguage);
   }
 
   Future<void> _onConnect(
@@ -94,5 +95,43 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     Emitter<PlayerState> emit,
   ) async {
     _logger.debug('App foregrounded');
+  }
+
+  Future<void> _onSelectLanguage(
+    SelectLanguage event,
+    Emitter<PlayerState> emit,
+  ) async {
+    _logger.info('Language selected', {
+      'language': event.language,
+      'channelId': event.channelId,
+    });
+
+    emit(state.copyWith(
+      status: PlayerStatus.connecting,
+      channelId: event.channelId,
+      selectedLanguage: event.language,
+      errorMessage: null,
+    ));
+
+    try {
+      // TODO(issue-4): WebRTC join via WebRtcService.joinChannel(event.channelId)
+      await SharedPrefsHelper.addRecentChannel(
+        channelId: event.channelId,
+        channelName: event.channelId,
+      );
+
+      // Simulate connected state until real WebRTC is wired in issue-4
+      emit(state.copyWith(
+        status: PlayerStatus.connected,
+        channelId: event.channelId,
+        selectedLanguage: event.language,
+      ));
+    } catch (e, stack) {
+      _logger.error('Language selection / join failed', e, stack);
+      emit(state.copyWith(
+        status: PlayerStatus.error,
+        errorMessage: e.toString(),
+      ));
+    }
   }
 }

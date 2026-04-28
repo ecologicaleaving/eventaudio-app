@@ -12,6 +12,10 @@ class PlayerState extends Equatable {
   final PlayerStatus status;
   final String? channelId;
   final String? channelName;
+
+  /// Currently selected language (ISO 639-1)
+  final String? selectedLanguage;
+
   final bool isMuted;
   final double volume;
   final String? errorMessage;
@@ -20,6 +24,7 @@ class PlayerState extends Equatable {
     this.status = PlayerStatus.idle,
     this.channelId,
     this.channelName,
+    this.selectedLanguage,
     this.isMuted = false,
     this.volume = 0.8,
     this.errorMessage,
@@ -27,11 +32,13 @@ class PlayerState extends Equatable {
 
   bool get isConnected => status == PlayerStatus.connected;
   bool get isConnecting => status == PlayerStatus.connecting;
+  bool get isPlaying => isConnected && !isMuted;
 
   PlayerState copyWith({
     PlayerStatus? status,
     String? channelId,
     String? channelName,
+    String? selectedLanguage,
     bool? isMuted,
     double? volume,
     String? errorMessage,
@@ -40,6 +47,7 @@ class PlayerState extends Equatable {
       status: status ?? this.status,
       channelId: channelId ?? this.channelId,
       channelName: channelName ?? this.channelName,
+      selectedLanguage: selectedLanguage ?? this.selectedLanguage,
       isMuted: isMuted ?? this.isMuted,
       volume: volume ?? this.volume,
       errorMessage: errorMessage,
@@ -51,6 +59,7 @@ class PlayerState extends Equatable {
         status,
         channelId,
         channelName,
+        selectedLanguage,
         isMuted,
         volume,
         errorMessage,
