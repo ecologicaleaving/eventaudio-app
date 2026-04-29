@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:mediasoup_client_flutter/mediasoup_client_flutter.dart';
 import 'package:socket_io_client/socket_io_client.dart' as sio;
 
@@ -302,9 +303,34 @@ class WebRtcService {
       dtlsParameters: DtlsParameters.fromMap(
           Map<String, dynamic>.from(data['dtlsParameters'] as Map)),
       iceServers: _iceServers,
+      // consumerCallback is invoked AFTER the SDP offer/answer for this
+      // consumer has completed inside the FlexQueue — the only safe place
+      // to send consumer-resume and to start audio playback.
       consumerCallback: (Consumer consumer) {
         _consumers[consumer.id] = consumer;
-        _logger.info('Consumer created via callback [id:${consumer.id}]');
+        debugPrint('[WebRtcService] track received, kind: ${consumer.track.kind}');
+        _logger.info(
+            'Consumer created via callback [id:${consumer.id}, kind:${consumer.track.kind}]');
+
+        // Tell the server to start sending RTP for this consumer.
+        // Must happen AFTER the local SDP handshake is complete (i.e. here,
+        // not in _onNewConsumer where consume() was only enqueued).
+        _socketEmit('consumer-resume', {'consumerId': consumer.id})
+            .then((_) {
+          debugPrint(
+              '[WebRtcService] consumer-resume sent for ${consumer.id}');
+          _logger.info('consumer-resume sent [id:${consumer.id}]');
+        }).catchError((e) {
+          _logger.error('consumer-resume failed [id:${consumer.id}]', e);
+        });
+
+        // Route audio to speaker/headphones — on Android the default route
+        // is the earpiece (telephone mode).  Must be set after the first
+        // consumer track is received so the audio session is already open.
+        if (!kIsWeb) {
+          Helper.setSpeakerphoneOn(true);
+          debugPrint('[WebRtcService] speakerphone enabled');
+        }
       },
     );
 
@@ -350,23 +376,10 @@ class WebRtcService {
       final consumerId = data['consumerId'] as String;
       final producerId = data['producerId'] as String;
       final peerId = data['deviceId'] as String? ?? 'unknown';
-
-      _recvTransport!.consume(
-        id: consumerId,
-        producerId: producerId,
-        peerId: peerId,
-        kind: RTCRtpMediaType.RTCRtpMediaTypeAudio,
-        rtpParameters: RtpParameters.fromMap(
-          Map<String, dynamic>.from(data['rtpParameters'] as Map),
-        ),
-      );
-
-      // Resume consumer (server creates it paused).
-      await _socketEmit('consumer-resume', {'consumerId': consumerId});
-
-      // Track peer and consumer mapping.
       final deviceId = data['deviceId'] as String?;
       final nickname = data['nickname'] as String?;
+
+      // Track peer and consumer mapping immediately so the UI is responsive.
       if (deviceId != null) {
         _peerConsumerIds[deviceId] = consumerId;
         if (nickname != null) {
@@ -377,9 +390,27 @@ class WebRtcService {
         }
       }
 
-      _logger.info('Consumer created [id:$consumerId]');
+      debugPrint(
+          '[WebRtcService] new-consumer received: consumerId=$consumerId '
+          'producerId=$producerId peerId=$peerId');
+      _logger.info('Enqueueing consume [consumerId:$consumerId]');
+
+      // Enqueue the SDP handshake for this consumer. consumer-resume is sent
+      // inside consumerCallback (see _createRecvTransport) which fires only
+      // AFTER the offer/answer exchange completes — sending it here would
+      // be a race condition and the server would start sending RTP before
+      // the client peer connection is ready.
+      _recvTransport!.consume(
+        id: consumerId,
+        producerId: producerId,
+        peerId: peerId,
+        kind: RTCRtpMediaType.RTCRtpMediaTypeAudio,
+        rtpParameters: RtpParameters.fromMap(
+          Map<String, dynamic>.from(data['rtpParameters'] as Map),
+        ),
+      );
     } catch (e) {
-      _logger.error('Failed to create consumer', e);
+      _logger.error('Failed to enqueue consumer', e);
     }
   }
 
