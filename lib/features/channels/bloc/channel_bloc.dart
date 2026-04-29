@@ -19,7 +19,7 @@ class ChannelBloc extends Bloc<ChannelEvent, ChannelState> {
     emit(const ChannelLoading());
     try {
       // TODO(issue-2): implement HTTP call to EventAudio API
-      // GET ${event.serverUrl}/api/events/${event.eventId}/channels
+      // GET ${AppConstants.apiBaseUrl}/events/${event.eventId}/channels
       _logger.info('Loading channels', {
         'serverUrl': event.serverUrl,
         'eventId': event.eventId,
