@@ -66,6 +66,10 @@ class AppConstants {
     defaultValue: 'https://eventaudio.8020solutions.org',
   );
 
+  /// REST API base URL — nginx routes /api/* to the backend.
+  /// Use this for all HTTP REST calls (not for WebSocket/Socket.IO).
+  static String get apiBaseUrl => '$serverUrl/api';
+
   /// Package name
   static const String packageName = 'it.eventaudio.app';
 
