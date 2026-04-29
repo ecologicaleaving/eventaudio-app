@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/models/event_hall.dart';
+import '../../../core/utils/constants.dart';
 import '../../../core/utils/logger.dart';
 import 'hall_event.dart';
 import 'hall_state.dart';
@@ -80,7 +81,7 @@ class HallBloc extends Bloc<HallEvent, HallState> {
     String serverUrl,
     String eventId,
   ) async {
-    final uri = Uri.parse('$serverUrl/events/$eventId/halls');
+    final uri = Uri.parse('${AppConstants.apiBaseUrl}/events/$eventId/halls');
     _logger.info('Fetching halls for event', {'uri': uri.toString()});
 
     final response = await http
@@ -103,7 +104,7 @@ class HallBloc extends Bloc<HallEvent, HallState> {
 
   /// Fetch all events then all their halls (browse mode — no eventId scanned).
   Future<List<EventHall>> _fetchAllHalls(String serverUrl) async {
-    final eventsUri = Uri.parse('$serverUrl/events');
+    final eventsUri = Uri.parse('${AppConstants.apiBaseUrl}/events');
     _logger.info('Fetching all events', {'uri': eventsUri.toString()});
 
     final eventsResponse = await http
