@@ -119,15 +119,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final newMuted = !state.isMuted;
     _logger.debug('Mute toggled', {'muted': newMuted});
 
-    if (_webRtcService != null && state.channelId != null) {
-      // Pause/resume all incoming peer consumers.
-      for (final peer in _webRtcService!.state.peers) {
-        await _webRtcService!.setAudioFromPeer(
-          peer.deviceId,
-          paused: newMuted,
-        );
-      }
-    }
+    // setAllConsumers iterates _peerConsumerIds directly — broadcaster
+    // consumers are included even when not in state.peers.
+    await _webRtcService?.setAllConsumers(paused: newMuted);
 
     emit(state.copyWith(isMuted: newMuted));
   }
