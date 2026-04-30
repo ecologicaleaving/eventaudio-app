@@ -504,6 +504,14 @@ class WebRtcService {
     }
   }
 
+  /// Pause/resume ALL consumers — iterates _peerConsumerIds directly so
+  /// broadcaster consumers are included regardless of state.peers.
+  Future<void> setAllConsumers({required bool paused}) async {
+    for (final deviceId in _peerConsumerIds.keys.toList()) {
+      await setAudioFromPeer(deviceId, paused: paused);
+    }
+  }
+
   // ─────────────────────────────────────────────
   // Leave & Disconnect
   // ─────────────────────────────────────────────
