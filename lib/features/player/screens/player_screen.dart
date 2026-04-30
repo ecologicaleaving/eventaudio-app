@@ -32,13 +32,32 @@ class PlayerScreen extends StatelessWidget {
   }
 }
 
-class _PlayerView extends StatelessWidget {
+class _PlayerView extends StatefulWidget {
   final EventHall hall;
 
   const _PlayerView({required this.hall});
 
   @override
+  State<_PlayerView> createState() => _PlayerViewState();
+}
+
+class _PlayerViewState extends State<_PlayerView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<PlayerBloc>().add(PlayerHallEntered(
+              eventId: widget.hall.eventId,
+              hallId: widget.hall.hallId,
+            ));
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final hall = widget.hall;
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(

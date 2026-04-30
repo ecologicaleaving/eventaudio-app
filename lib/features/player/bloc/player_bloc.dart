@@ -31,6 +31,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<SetVolume>(_onSetVolume);
     on<PlayerBackgroundEntered>(_onBackground);
     on<PlayerForegroundEntered>(_onForeground);
+    on<PlayerHallEntered>(_onHallEntered);
     on<SelectLanguage>(_onSelectLanguage);
     on<_WebRtcStateChanged>(_onWebRtcStateChanged);
     on<_HallDetailUpdated>(_onHallDetailUpdated);
@@ -158,6 +159,15 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     Emitter<PlayerState> emit,
   ) async {
     _logger.debug('App foregrounded');
+  }
+
+  void _onHallEntered(
+    PlayerHallEntered event,
+    Emitter<PlayerState> emit,
+  ) {
+    // Avvia il polling activeChannels subito, prima che l'utente selezioni una lingua.
+    // Senza questo, la grid è vuota e l'utente non può connettersi.
+    _startHallPolling(event.eventId, event.hallId);
   }
 
   Future<void> _onSelectLanguage(
