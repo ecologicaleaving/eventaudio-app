@@ -20,6 +20,12 @@ class PlayerState extends Equatable {
   final double volume;
   final String? errorMessage;
 
+  /// Canali con almeno un producer attivo, aggiornati via polling.
+  final List<String> activeChannels;
+
+  /// Lingua ISO parlata nell'originale (es. 'it'), null se nessuno speaker.
+  final String? sourceLanguage;
+
   const PlayerState({
     this.status = PlayerStatus.idle,
     this.channelId,
@@ -28,6 +34,8 @@ class PlayerState extends Equatable {
     this.isMuted = false,
     this.volume = 0.8,
     this.errorMessage,
+    this.activeChannels = const [],
+    this.sourceLanguage,
   });
 
   bool get isConnected => status == PlayerStatus.connected;
@@ -42,6 +50,9 @@ class PlayerState extends Equatable {
     bool? isMuted,
     double? volume,
     String? errorMessage,
+    List<String>? activeChannels,
+    String? sourceLanguage,
+    bool clearSourceLanguage = false,
   }) {
     return PlayerState(
       status: status ?? this.status,
@@ -51,6 +62,8 @@ class PlayerState extends Equatable {
       isMuted: isMuted ?? this.isMuted,
       volume: volume ?? this.volume,
       errorMessage: errorMessage,
+      activeChannels: activeChannels ?? this.activeChannels,
+      sourceLanguage: clearSourceLanguage ? null : (sourceLanguage ?? this.sourceLanguage),
     );
   }
 
@@ -63,5 +76,7 @@ class PlayerState extends Equatable {
         isMuted,
         volume,
         errorMessage,
+        activeChannels,
+        sourceLanguage,
       ];
 }

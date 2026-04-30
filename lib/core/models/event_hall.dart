@@ -10,6 +10,12 @@ class EventHall extends Equatable {
   /// ISO 639-1 language codes, e.g. ['it', 'en', 'de']
   final List<String> languages;
 
+  /// Canali con almeno un producer attivo (da API activeChannels).
+  final List<String> activeChannels;
+
+  /// Lingua ISO parlata dall'originale (es. 'it'), null se nessuno speaker attivo.
+  final String? sourceLanguage;
+
   final int listenerCount;
   final bool isLive;
 
@@ -21,6 +27,8 @@ class EventHall extends Equatable {
     required this.hallName,
     required this.eventId,
     this.languages = const [],
+    this.activeChannels = const [],
+    this.sourceLanguage,
     this.listenerCount = 0,
     this.isLive = false,
     this.requiresPin = false,
@@ -35,12 +43,15 @@ class EventHall extends Equatable {
     String? contextEventId,
   }) {
     final rawLangs = json['languages'] as List<dynamic>? ?? [];
+    final rawActive = json['activeChannels'] as List<dynamic>? ?? [];
     return EventHall(
       hallId: json['hallId'] as String? ?? json['id'] as String,
       hallName: json['hallName'] as String? ?? json['name'] as String,
       // Server hall list responses don't include eventId — fall back to context.
       eventId: json['eventId'] as String? ?? contextEventId ?? '',
       languages: rawLangs.map((e) => e.toString()).toList(),
+      activeChannels: rawActive.map((e) => e.toString()).toList(),
+      sourceLanguage: json['sourceLanguage'] as String?,
       listenerCount: (json['listenerCount'] as num?)?.toInt() ?? 0,
       isLive: json['isLive'] as bool? ?? json['isActive'] as bool? ?? false,
       requiresPin: json['requiresPin'] as bool? ??
@@ -55,12 +66,16 @@ class EventHall extends Equatable {
         'hallName': hallName,
         'eventId': eventId,
         'languages': languages,
+        'activeChannels': activeChannels,
+        'sourceLanguage': sourceLanguage,
         'listenerCount': listenerCount,
         'isLive': isLive,
         'requiresPin': requiresPin,
       };
 
   @override
-  List<Object?> get props =>
-      [hallId, hallName, eventId, languages, listenerCount, isLive, requiresPin];
+  List<Object?> get props => [
+        hallId, hallName, eventId, languages, activeChannels, sourceLanguage,
+        listenerCount, isLive, requiresPin,
+      ];
 }

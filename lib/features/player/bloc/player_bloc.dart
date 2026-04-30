@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/services/audio_service.dart';
 import '../../../core/services/foreground_service_manager.dart';
@@ -18,6 +20,10 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   final AudioService _audioService = AudioService();
   StreamSubscription<WebRtcState>? _webRtcSub;
 
+  Timer? _hallPollTimer;
+  String? _pollingEventId;
+  String? _pollingHallId;
+
   PlayerBloc() : super(const PlayerState()) {
     on<ConnectToChannel>(_onConnect);
     on<DisconnectFromChannel>(_onDisconnect);
@@ -27,6 +33,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<PlayerForegroundEntered>(_onForeground);
     on<SelectLanguage>(_onSelectLanguage);
     on<_WebRtcStateChanged>(_onWebRtcStateChanged);
+    on<_HallDetailUpdated>(_onHallDetailUpdated);
   }
 
   Future<void> _onConnect(
@@ -108,6 +115,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     Emitter<PlayerState> emit,
   ) async {
     _logger.info('Disconnecting from channel');
+    _stopHallPolling();
     await _cleanup();
     emit(const PlayerState(status: PlayerStatus.disconnected));
   }
@@ -202,6 +210,13 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
         channelId: event.channelId,
         selectedLanguage: event.language,
       ));
+
+      // Avvia polling hall detail per aggiornare activeChannels ogni 5s.
+      // channelId format: "eventId:hallId:language"
+      final parts = event.channelId.split(':');
+      if (parts.length >= 2) {
+        _startHallPolling(parts[0], parts[1]);
+      }
     } catch (e, stack) {
       _logger.error('SelectLanguage failed', e, stack);
       emit(state.copyWith(
@@ -209,6 +224,17 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
         errorMessage: e.toString(),
       ));
     }
+  }
+
+  void _onHallDetailUpdated(
+    _HallDetailUpdated event,
+    Emitter<PlayerState> emit,
+  ) {
+    emit(state.copyWith(
+      activeChannels: event.activeChannels,
+      sourceLanguage: event.sourceLanguage,
+      clearSourceLanguage: event.sourceLanguage == null,
+    ));
   }
 
   void _onWebRtcStateChanged(
@@ -253,15 +279,65 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     await ForegroundServiceManager.stopService();
   }
 
+  // ── Hall detail polling ────────────────────────────────────────
+
+  void _startHallPolling(String eventId, String hallId) {
+    _stopHallPolling();
+    _pollingEventId = eventId;
+    _pollingHallId = hallId;
+    // Prima fetch immediata, poi ogni 5s.
+    _fetchHallDetail();
+    _hallPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _fetchHallDetail();
+    });
+    _logger.debug('Hall polling started', {'eventId': eventId, 'hallId': hallId});
+  }
+
+  void _stopHallPolling() {
+    _hallPollTimer?.cancel();
+    _hallPollTimer = null;
+    _pollingEventId = null;
+    _pollingHallId = null;
+  }
+
+  Future<void> _fetchHallDetail() async {
+    final eventId = _pollingEventId;
+    final hallId = _pollingHallId;
+    if (eventId == null || hallId == null || isClosed) return;
+    try {
+      final uri = Uri.parse(
+          '${AppConstants.apiBaseUrl}/events/$eventId/halls/$hallId');
+      final resp = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 5));
+      if (resp.statusCode != 200) return;
+      final json = jsonDecode(resp.body) as Map<String, dynamic>;
+      final activeChannels = (json['activeChannels'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+      final sourceLanguage = json['sourceLanguage'] as String?;
+      if (!isClosed) {
+        add(_HallDetailUpdated(
+          activeChannels: activeChannels,
+          sourceLanguage: sourceLanguage,
+        ));
+      }
+    } catch (_) {
+      // ignora errori di polling silenziosamente
+    }
+  }
+
   @override
   Future<void> close() async {
+    _stopHallPolling();
     await _cleanup();
     return super.close();
   }
 }
 
 // ─────────────────────────────────────────────
-// Internal event — bridges WebRTC stream into Bloc
+// Internal events
 // ─────────────────────────────────────────────
 
 class _WebRtcStateChanged extends PlayerEvent {
@@ -271,4 +347,17 @@ class _WebRtcStateChanged extends PlayerEvent {
 
   @override
   List<Object?> get props => [webRtcState];
+}
+
+class _HallDetailUpdated extends PlayerEvent {
+  final List<String> activeChannels;
+  final String? sourceLanguage;
+
+  const _HallDetailUpdated({
+    required this.activeChannels,
+    this.sourceLanguage,
+  });
+
+  @override
+  List<Object?> get props => [activeChannels, sourceLanguage];
 }

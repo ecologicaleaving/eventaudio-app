@@ -63,3 +63,4 @@ class SelectLanguage extends PlayerEvent {
   @override
   List<Object?> get props => [language, channelId, serverUrl];
 }
+
