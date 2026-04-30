@@ -109,6 +109,17 @@ class WebRtcService {
   // ─────────────────────────────────────────────
 
   Future<void> connect(String deviceId, String nickname) async {
+    // Configura l'audio in modalità media PRIMA di avviare WebRTC.
+    // MODE_NORMAL + stream music = Android usa il routing standard:
+    //   auricolari cablati/BT se collegati, altoparlante altrimenti.
+    // Deve essere chiamato prima della sessione WebRTC, non può essere
+    // cambiato mid-session.
+    if (!kIsWeb) {
+      await Helper.setAndroidAudioConfiguration(
+        AndroidAudioConfiguration.media,
+      );
+    }
+
     // Tear down any previous socket so it doesn't reconnect in background.
     _socket?.disconnect();
     _socket?.destroy();
@@ -168,11 +179,6 @@ class WebRtcService {
       });
 
       _socket!.on('reconnect', (_) => _handleSocketReconnect());
-
-      // Aggiorna il routing quando l'utente collega/scollega auricolari.
-      if (!kIsWeb) {
-        navigator.mediaDevices.ondevicechange = (_) => _applyAudioRouting();
-      }
 
       _socket!.connect();
 
@@ -357,12 +363,9 @@ class WebRtcService {
           _logger.error('consumer-resume failed [id:${consumer.id}]', e);
         });
 
-        // Route audio al dispositivo corretto.
-        // setSpeakerphoneOn(true) sovrascrive SEMPRE gli auricolari — lo
-        // attiviamo solo se non ci sono dispositivi esterni collegati.
-        if (!kIsWeb) {
-          _applyAudioRouting();
-        }
+        // In AndroidAudioConfiguration.media (MODE_NORMAL) il routing è
+        // gestito dall'OS: auricolari se collegati, altoparlante altrimenti.
+        // Non serve chiamare setSpeakerphoneOn — sarebbe ignorato in MODE_NORMAL.
       },
     );
 
@@ -540,9 +543,6 @@ class WebRtcService {
   }
 
   Future<void> disconnect() async {
-    if (!kIsWeb) {
-      navigator.mediaDevices.ondevicechange = null;
-    }
     await leaveChannel();
     _socket?.disconnect();
     _device = null;
@@ -563,50 +563,6 @@ class WebRtcService {
     _socket?.off('producer-closed');
     _socket?.off('member-left');
     _socket?.off('new-consumer');
-  }
-
-  // ─────────────────────────────────────────────
-  // Audio routing
-  // ─────────────────────────────────────────────
-
-  /// Imposta il routing audio in base ai dispositivi connessi:
-  /// - Auricolari cablati rilevati → setSpeakerphoneOn(false) → audio agli auricolari
-  /// - Bluetooth rilevato → setSpeakerphoneOnButPreferBluetooth()
-  /// - Nessun dispositivo esterno → setSpeakerphoneOn(true) → altoparlante del telefono
-  ///
-  /// Viene chiamato al primo consumer e ad ogni cambio dispositivo (hotplug).
-  Future<void> _applyAudioRouting() async {
-    try {
-      final outputs = await Helper.audiooutputs;
-      bool hasWired = false;
-      bool hasBluetooth = false;
-      for (final d in outputs) {
-        final label = d.label.toLowerCase();
-        if (label.contains('headphone') ||
-            label.contains('headset') ||
-            label.contains('wired') ||
-            label.contains('earphone')) {
-          hasWired = true;
-        }
-        if (label.contains('bluetooth') || label.contains('airpod')) {
-          hasBluetooth = true;
-        }
-      }
-      if (hasWired) {
-        await Helper.setSpeakerphoneOn(false);
-        _logger.info('Audio routing → auricolari cablati');
-      } else if (hasBluetooth) {
-        await Helper.setSpeakerphoneOnButPreferBluetooth();
-        _logger.info('Audio routing → Bluetooth');
-      } else {
-        await Helper.setSpeakerphoneOn(true);
-        _logger.info('Audio routing → altoparlante (nessun dispositivo esterno)');
-      }
-    } catch (e) {
-      // Fallback: altoparlante se non si riesce a rilevare i dispositivi.
-      await Helper.setSpeakerphoneOn(true);
-      _logger.error('_applyAudioRouting fallback to speaker', e);
-    }
   }
 
   // ─────────────────────────────────────────────
