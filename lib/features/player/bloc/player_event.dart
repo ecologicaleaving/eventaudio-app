@@ -48,6 +48,17 @@ class PlayerForegroundEntered extends PlayerEvent {
   const PlayerForegroundEntered();
 }
 
+/// Utente è entrato nella schermata sala — avvia subito il polling activeChannels
+class PlayerHallEntered extends PlayerEvent {
+  final String eventId;
+  final String hallId;
+
+  const PlayerHallEntered({required this.eventId, required this.hallId});
+
+  @override
+  List<Object?> get props => [eventId, hallId];
+}
+
 /// Visitor selected a language chip → connect to that language's channel
 class SelectLanguage extends PlayerEvent {
   final String language;
