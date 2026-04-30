@@ -230,6 +230,11 @@ class WebRtcService {
     _currentChannelName = channelName;
     _currentChannelPin = pin;
 
+    // Chiudi transport precedente se presente (cambio lingua).
+    if (_recvTransport != null) {
+      await _closeTransports();
+    }
+
     // Remove any stale listeners before registering new ones.
     // Prevents duplicate handlers if joinChannel is called more than once.
     _socket!.off('new-producer');
@@ -518,7 +523,7 @@ class WebRtcService {
 
   Future<void> leaveChannel() async {
     if (_socket?.connected == true && _currentChannelId != null) {
-      await _socketEmit('leave-channel', {})
+      await _socketEmit('leave-hall', {})
           .catchError((_) => <String, dynamic>{});
     }
     await _closeTransports();

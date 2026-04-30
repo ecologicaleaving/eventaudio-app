@@ -102,13 +102,21 @@ class _PlayerView extends StatelessWidget {
                   const SizedBox(height: 18),
                   // ── Player card ────────────────────────────────────
                   _PlayerCard(hall: hall, state: state),
+                  // ── Canale non più attivo ──────────────────────────
+                  if (state.activeChannels.isNotEmpty &&
+                      state.selectedLanguage != null &&
+                      !state.activeChannels.contains(state.selectedLanguage)) ...[
+                    const SizedBox(height: 12),
+                    _InactiveBanner(),
+                  ],
                   // ── Language grid ──────────────────────────────────
-                  // Always show grid: channels = original + translated languages
                   const SizedBox(height: 22),
-                  _LangGridHeader(
-                      count: 1 + hall.languages.length),
+                  _LangGridHeader(count: state.activeChannels.length),
                   const SizedBox(height: 10),
-                  _LanguageGrid(hall: hall, state: state),
+                  if (state.activeChannels.isEmpty)
+                    const _NoChannelsBanner()
+                  else
+                    _LanguageGrid(hall: hall, state: state),
                   const SizedBox(height: 24),
                   // ── Status line ────────────────────────────────────
                   _StatusLine(state: state),
@@ -145,7 +153,11 @@ class _PlayerCard extends StatelessWidget {
     // Default to 'original' channel when no language selected yet.
     final lang = state.selectedLanguage ?? 'original';
     final flag = languageFlag(lang);
-    final langLabel = languageLabel(lang);
+    final rawLabel = languageLabel(lang);
+    // Per il canale 'original', mostra "Originale · [lingua]" se sourceLanguage è disponibile.
+    final langLabel = (lang == 'original' && state.sourceLanguage != null)
+        ? 'Originale · ${languageLabel(state.sourceLanguage!)}'
+        : rawLabel;
 
     return Container(
       decoration: BoxDecoration(
@@ -443,7 +455,7 @@ class _LangGridHeader extends StatelessWidget {
       textBaseline: TextBaseline.alphabetic,
       children: [
         Text(
-          'Cambia lingua',
+          'Canali audio',
           style: GoogleFonts.inter(
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -451,7 +463,7 @@ class _LangGridHeader extends StatelessWidget {
           ),
         ),
         Text(
-          '$count lingue',
+          '$count ${count == 1 ? 'canale attivo' : 'canali attivi'}',
           style: GoogleFonts.inter(
             fontSize: 11,
             color: AppTheme.inkDim,
@@ -472,8 +484,15 @@ class _LanguageGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Always include 'original' channel first, then translated languages.
-    final langs = ['original', ...hall.languages];
+    // Usa i canali attivi dal polling — solo quelli con producer attivi.
+    final langs = state.activeChannels;
+
+    String cellLabel(String lang) {
+      if (lang == 'original' && state.sourceLanguage != null) {
+        return 'Originale · ${languageLabel(state.sourceLanguage!)}';
+      }
+      return languageLabel(lang);
+    }
 
     // Build pairs for 2-column layout
     return Column(
@@ -486,11 +505,11 @@ class _LanguageGrid extends StatelessWidget {
                 Expanded(
                   child: _LangCell(
                     language: langs[i],
+                    labelOverride: cellLabel(langs[i]),
                     isActive: state.selectedLanguage == langs[i],
                     onTap: () => context.read<PlayerBloc>().add(
                           SelectLanguage(
                             language: langs[i],
-                            // channelId matches server composeRoomId: eventId:hallId:language
                             channelId:
                                 '${hall.eventId}:${hall.hallId}:${langs[i]}',
                             serverUrl: AppConstants.serverUrl,
@@ -503,6 +522,7 @@ class _LanguageGrid extends StatelessWidget {
                   Expanded(
                     child: _LangCell(
                       language: langs[i + 1],
+                      labelOverride: cellLabel(langs[i + 1]),
                       isActive: state.selectedLanguage == langs[i + 1],
                       onTap: () => context.read<PlayerBloc>().add(
                             SelectLanguage(
@@ -515,7 +535,6 @@ class _LanguageGrid extends StatelessWidget {
                     ),
                   ),
                 ] else
-                  // odd count: fill with empty expanded
                   const Expanded(child: SizedBox()),
               ],
             ),
@@ -527,11 +546,13 @@ class _LanguageGrid extends StatelessWidget {
 
 class _LangCell extends StatelessWidget {
   final String language;
+  final String? labelOverride;
   final bool isActive;
   final VoidCallback onTap;
 
   const _LangCell({
     required this.language,
+    this.labelOverride,
     required this.isActive,
     required this.onTap,
   });
@@ -563,7 +584,7 @@ class _LangCell extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    languageLabel(language),
+                    labelOverride ?? languageLabel(language),
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -659,6 +680,53 @@ class _ChangeSalaButton extends StatelessWidget {
         textStyle: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+// ── No channels banner ───────────────────────────────────────────────────────
+
+class _NoChannelsBanner extends StatelessWidget {
+  const _NoChannelsBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+      child: Text(
+        'Nessun audio in diretta al momento.',
+        textAlign: TextAlign.center,
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          color: AppTheme.inkDim,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Inactive channel banner ───────────────────────────────────────────────────
+
+class _InactiveBanner extends StatelessWidget {
+  const _InactiveBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3CD),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6)),
+      ),
+      child: Text(
+        'Il canale corrente non è più attivo — seleziona un altro canale.',
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          color: const Color(0xFF92400E),
         ),
       ),
     );
